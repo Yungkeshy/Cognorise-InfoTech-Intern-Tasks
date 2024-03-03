@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ping Pong AI</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #222;
+        color: #fff;
+    }
+
+    .container {
+        text-align: center;
+    }
+
+    #gameCanvas {
+        background-color: #000;
+        margin-bottom: 20px;
+    }
+
+    #scoreboard {
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+
+    #player1Score {
+        color: #ff6384;
+    }
+
+    #player2Score {
+        color: #36a2eb;
+    }
+
+    #instructions {
+        font-size: 18px;
+    }
+
+    #restartBtn, #pauseBtn {
+        background-color: #4caf50;
+        border: none;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin-top: 20px;
+        cursor: pointer;
+        border-radius: 5px;
+        margin-right: 10px;
+    }
+
+    #editNamesBtn {
+        background-color: #2196F3;
+        border: none;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin-top: 20px;
+        cursor: pointer;
+        border-radius: 5px;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <div id="scoreboard">
+        <span id="player1Name">Player 1</span>: <span id="player1Score">0</span>
+        <span>-</span>
+        <span id="player2Name">Player 2</span>: <span id="player2Score">0</span>
+    </div>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <div id="instructions">Move your mouse to control <span id="player1NameSpan">Player 1's</span> paddle</div>
+    <button id="restartBtn" onclick="restartGame()">Restart Game</button>
+    <button id="pauseBtn" onclick="togglePause()">Pause</button>
+    <button id="editNamesBtn" onclick="editNames()">Edit Players' Names</button>
+</div>
+
+<script>
+    // Game variables
+    let canvas, context;
+    let player1, player2, ball;
+    let isPaused = false;
+
+    // Paddle variables
+    const paddleWidth = 10;
+    const paddleHeight = 100;
+    const paddleSpeed = 5;
+
+    // Ball variables
+    const ballSize = 10;
+    let ballSpeedX = 5;
+    let ballSpeedY = 5;
+
+    // Initialize the game
+    window.onload = function() {
+        canvas = document.getElementById("gameCanvas");
+        context = canvas.getContext("2d");
+
+        // Create players and ball
+        player1 = {
+            x: 20,
+            y: canvas.height / 2 - paddleHeight / 2,
+            width: paddleWidth,
+            height: paddleHeight,
+            score: 0,
+            name: "Player 1"
+        };
+        player2 = {
+            x: canvas.width - 30,
+            y: canvas.height / 2 - paddleHeight / 2,
+            width: paddleWidth,
+            height: paddleHeight,
+            score: 0,
+            name: "Player 2"
+        };
+        ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: ballSize
+        };
+
+        // Start the game loop
+        setInterval(gameLoop, 1000 / 60);
+
+        // Event listener for mouse movement
+        canvas.addEventListener("mousemove", function(event) {
+            const rect = canvas.getBoundingClientRect();
+            player1.y = event.clientY - rect.top - player1.height / 2;
+        });
+    };
+
+    // Game loop
+    function gameLoop() {
+        if (!isPaused) {
+            // Update
+            moveBall();
+            moveAI();
+
+            // Render
+            render();
+        }
+    }
+
+    // Move the ball
+    function moveBall() {
+        ball.x += ballSpeedX;
+        ball.y += ballSpeedY;
+
+        // Ball collision with top/bottom walls
+        if (ball.y + ball.radius >= canvas.height || ball.y - ball.radius <= 0) {
+            ballSpeedY = -ballSpeedY;
+        }
+
+        // Ball collision with paddles
+        if (ball.x - ball.radius <= player1.x + player1.width && ball.y >= player1.y && ball.y <= player1.y + player1.height ||
+            ball.x + ball.radius >= player2.x && ball.y >= player2.y && ball.y <= player2.y + player2.height) {
+            ballSpeedX = -ballSpeedX;
+        }
+
+        // Ball out of bounds
+        if (ball.x - ball.radius <= 0) {
+            player2.score++;
+            resetBall();
+        } else if (ball.x + ball.radius >= canvas.width) {
+            player1.score++;
+            resetBall();
+        }
+    }
+
+    // Move the AI
+    function moveAI() {
+        // Simple AI logic
+        if (player2.y + player2.height / 2 < ball.y) {
+            player2.y += paddleSpeed;
+        } else {
+            player2.y -= paddleSpeed;
+        }
+
+        // Keep the AI paddle in bounds
+        if (player2.y < 0) {
+            player2.y = 0;
+        } else if (player2.y + player2.height > canvas.height) {
+            player2.y = canvas.height - player2.height;
+        }
+    }
+
+    // Reset the ball position
+    function resetBall() {
+        ball.x = canvas.width / 2;
+        ball.y = canvas.height / 2;
+        ballSpeedX = -ballSpeedX;
+        updateScore();
+    }
+
+    // Update score
+    function updateScore() {
+        document.getElementById("player1Score").innerText = player1.score;
+        document.getElementById("player2Score").innerText = player2.score;
+    }
+
+    // Render the game
+    function render() {
+        // Clear canvas
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw players
+        context.fillStyle = "#fff";
+        context.fillRect(player1.x, player1.y, player1.width, player1.height);
+        context.fillRect(player2.x, player2.y, player2.width, player2.height);
+
+        // Draw ball
+        context.beginPath();
+        context.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        context.fillStyle = "#fff";
+        context.fill();
+    }
+
+    // Restart game
+    function restartGame() {
+        player1.score = 0;
+        player2.score = 0;
+        resetBall();
+        isPaused = false;
+    }
+
+    // Pause/Unpause game
+    function togglePause() {
+        isPaused = !isPaused;
+    }
+
+    // Edit players' names
+    function editNames() {
+        const newName1 = prompt("Enter new name for Player 1:", player1.name);
+        const newName2 = prompt("Enter new name for Player 2:", player2.name);
+        
+        if (newName1 !== null && newName1.trim() !== "") {
+            player1.name = newName1;
+            document.getElementById("player1Name").innerText = newName1;
+            document.getElementById("player1NameSpan").innerText = newName1;
+        }
+
+        if (newName2 !== null && newName2.trim() !== "") {
+            player2.name = newName2;
+            document.getElementById("player2Name").innerText = newName2;
+        }
+    }
+</script>
+</body>
+</html>
